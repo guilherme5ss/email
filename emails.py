@@ -121,70 +121,38 @@ def gerar_arvore_email(pasta, arvore=None): # Cria uma estrutura de árvore a pa
     except Exception as e:
         print(f"Erro ao acessar subpastas de {pasta.Name}: {e}")
 
-    return arvore  # Retorna a árvore completa
-# FUNÇÕES PARA ACESSO OUTLOOK
-# 3 métodos que juntos percorrem uma pasta do e-mail e acessa estas subpastas
-def acessar_subpasta_email(caminho_pasta):
+    return arvore  # Retorna a árvore completa    
+
+def acessar_subpasta(caminho_pasta): # Percorre uma lista de pastas outlook para acessar a subpasta desejada
     """
     Acessa uma pasta ou subpasta no Outlook com base no caminho fornecido, suportando múltiplos níveis de pastas.
     
     Parâmetros:
-        caminho_pasta (str): Caminho da pasta, por exemplo, "Pasta/Subpasta/Subsubpasta".
-        endereco_email (str): Nome da caixa de correio principal, por exemplo, "nome@example.com".
-        
+        caminho_pasta (list): Caminho da pasta, por exemplo: ['Pasta', 'Subpasta', 'Subsubpasta'].       
     Retorna:
         A pasta acessada, se encontrada. Caso contrário, retorna None.
     """
-    outlook = win32com.client.Dispatch("Outlook.Application").GetNamespace("MAPI") # Inicializando a conexão com o Outlook
-    
-    enderecos_email = []
-    for pastas in outlook.Folders:
-        enderecos_email.append(pastas)
-    endereco_email = str(enderecos_email[1])
-    # Acessa a caixa de correio principal
-    try:
-        caixa_correio = outlook.Folders.Item(endereco_email)
-    except Exception as e:
-        print(f"Erro ao acessar a caixa de correio '{endereco_email}': {e}")
-        return None
-
-    pastas = caminho_pasta
+    outlook = win32com.client.Dispatch("Outlook.Application").GetNamespace("MAPI") # Inicializando a conexão com o Outlook 
+    if caminho_pasta [0] == "Outlook": # Ignora a raiz da árvore se for "Outlook"
+        # A primeira pasta é reservada de "outlook" é a raiz "Outlook", com suas pastas padrão.
+        # Se por algum motivo for necessario navegar por essa entrada ignora-se a raiz "Outlook" e é possivel explorar suas raizes. 
+        pastas = caminho_pasta[1:]
+    else:
+        pastas = caminho_pasta
+    pasta_atual = caminho_pasta[0] # Se a entrada for uma lista
     # Navega por cada pasta na hierarquia
-    pasta_atual = caixa_correio
     try:
         for pasta in pastas:
-            pasta_atual = pasta_atual.Folders.Item(pasta)
+            if "@" in pasta: # Caso Pasta seja uma email, supõe-se que nenhuma pasta que não seja e-mail utiliza o caractere "@"
+                pasta_atual = outlook.Folders.Item(pasta)
+            else:
+                numero = chave_correspondente(pasta,padrao_outlook, normalizar=True) # Caso houver correspondencia a variável "numero" recebe um valor inteiro
+                if numero == None: # Não ocorreu correspondencia, portanto a variável "numero" recebe "None" 
+                    pasta_atual = pasta_atual.Folders.Item(pasta)
+                else: # Caso seja uma pasta reservada outlook
+                    pasta_atual = outlook.GetDefaultFolder(numero)        
         print(f"Pasta '{pasta_atual.Name}' foi acessada com sucesso.")
         return pasta_atual
     except Exception as e:
         print(f"Erro ao acessar a pasta '{pasta}': {e}")
         return None
-
-def acessar_subpasta_outlook(caminho_pasta):
-    outlook = win32com.client.Dispatch("Outlook.Application").GetNamespace("MAPI") # Inicializando a conexão com o Outlook
-
-    # Acessar a pasta de entrada. Mais informações: https://learn.microsoft.com/pt-br/office/vba/api/outlook.oldefaultfolders
-    inbox = outlook.GetDefaultFolder(6)  # 6 é a pasta de entrada (inbox)
-    
-    del caminho_pasta[0] #"Caixa de Entrada" (ou "Inbox") é o primeiro elemento da lista, portanto é removido pois sua implementaçõa é diferente)
-
-    pasta_atual = inbox
-    try:
-        for pasta in caminho_pasta:
-            pasta_atual = pasta_atual.Folders.Item(pasta)
-        print(f"Pasta '{pasta_atual.Name}' foi acessada com sucesso.")
-        return pasta_atual
-    except Exception as e:
-        print(f"Erro ao acessar a pasta '{pasta}': {e}")
-        return None
-
-def acessar_subpasta(caminho_pasta):
-    # Divide o caminho em pastas e subpastas
-    pastas = caminho_pasta.split("/")
-    #Checar se caminho pasta é uma lista/ contem "Inbox" ou "Caixa de Entrada":
-    if pastas[0]==("Inbox" or "Caixa de Entrada"):
-        pasta = acessar_subpasta_outlook(pastas)
-        return pasta
-    else:
-        pasta = acessar_subpasta_email(pastas)
-        return pasta      
