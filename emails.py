@@ -10,6 +10,7 @@ from collections import defaultdict
 import unicodedata
 import re
 from arvore import Arvore
+from bs4 import BeautifulSoup # Analisa documentos HTML e XML, incluindo aqueles com marcação malformada.
 
 # Variáveis
 # Lista com nomes de pastas reservadas Outlook em inglês e português
@@ -156,3 +157,13 @@ def acessar_subpasta(caminho_pasta): # Percorre uma lista de pastas outlook para
     except Exception as e:
         print(f"Erro ao acessar a pasta '{pasta}': {e}")
         return None
+
+def get_oulook_trees(): # Gera uma lista com árvores do Outlook
+    outlook = win32com.client.Dispatch("Outlook.Application").GetNamespace("MAPI")
+    raizes = outlook.Folders.Count # Conta as pastas do outlook
+    arvores_pastas = [] # Instanciando uma lista de árvores 
+    for num in range(1, raizes + 1): # As pastas começam do 1, não do 0 como listas comuns
+        arvore = gerar_arvore_email(outlook.Folders.Item(num)) # Aqui você especifica qual pasta raiz você quer usar
+        #print(arvore.display_arvore())
+        arvores_pastas.append(arvore)  
+    return arvores_pastas # Lista com as árvores geradas no outlook
