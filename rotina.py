@@ -2,20 +2,19 @@ from emails import *
 
 outlook = win32com.client.Dispatch("Outlook.Application").GetNamespace("MAPI") # Inicializando a conexão com o Outlook
 
-# Acessando "Inbox". Mais informações: https://learn.microsoft.com/pt-br/office/vba/api/outlook.oldefaultfolders
-inbox = outlook.GetDefaultFolder(6)  # 6 é o código para a pasta "Inbox"
+caminho =(get_oulook_trees()[1]).find_path_values("Respostas")
 
 # Obter todos os e-mails na pasta
-messages = inbox.Items
+messages = acessar_subpasta(caminho).Items
 
-# Dicionário para armazenar links e as mensagens correspondentes
-links_dict = defaultdict(list)
+# Lista para armazenar os dados dos links
+data_list = []
 
 # Expressão regular para encontrar URLs
 url_regex = re.compile(r'https?://\S+')
 
 # Palavras âncoras irrelevantes
-irrelevant_anchors = ["aqui", "clique", "cancelar", "unsubscribe", "sair"]
+irrelevant_anchors = ["aqui", "clique", "cancelar", "unsubscribe", "sair", "ajuda"]
 
 # Função para verificar se um link é irrelevante baseado na âncora
 def is_relevant_link(anchor_text):
@@ -36,17 +35,22 @@ for message in messages:
             for link_tag in soup.find_all('a', href=True):
                 link = link_tag['href']  # Extrair o href (link)
                 anchor_text = link_tag.get_text()  # Extrair o texto âncora
-                
+
                 # Filtrar links irrelevantes
                 if is_relevant_link(anchor_text):
-                    links_dict[link].append(message.Subject)  # Armazenar o assunto da mensagem com o link
+                    subject = message.Subject
+                    date = message.ReceivedTime.strftime("%d-%m-%Y")  # Data do e-mail
+                    time = message.ReceivedTime.strftime("%H:%M")  # Hora do e-mail
+                    
+                    # Adicionar os dados à lista
+                    data_list.append([subject, link, date, time])
     except Exception as e:
         print(f"Erro ao processar o e-mail: {e}")
 
-# Exibindo os resultados
-for link, subjects in links_dict.items():
-    print(f"Link: {link}")
-    print("Encontrado em:")
-    for subject in subjects:
-        print(f"- {subject}")
-    print("\n")
+# Criando um DataFrame com os dados coletados
+df = pd.DataFrame(data_list, columns=["Assunto", "Link", "Data", "Hora"])
+
+# Salvando o DataFrame em um arquivo Excel
+df.to_excel("links_extraidos_outlook.xlsx", index=False)
+
+print("Arquivo Excel criado com sucesso!")

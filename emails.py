@@ -10,7 +10,8 @@ from collections import defaultdict
 import unicodedata
 import re
 from arvore import Arvore
-from bs4 import BeautifulSoup # Analisa documentos HTML e XML, incluindo aqueles com marcação malformada.
+from bs4 import BeautifulSoup # Analisa documentos HTML e XML, incluindo aqueles com marcação malformada. pip install beautifulsoup4
+import pandas as pd # pip install pandas openpyxl
 
 # Variáveis
 # Lista com nomes de pastas reservadas Outlook em inglês e português
