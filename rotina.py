@@ -14,13 +14,13 @@ data_list = []
 url_regex = re.compile(r'https?://\S+')
 
 # Palavras âncoras e domínios irrelevantes
-irrelevant_anchors = ["aqui", "clique", "cancelar", "unsubscribe", "sair"]
-advertising_patterns = ["promo", "marketing", "campaign", "upsell", "st_appsite_flagship"]
+irrelevant_anchors = ["aqui", "clique", "cancelar", "unsubscribe", "sair", "ajuda", "saiba por que incluímos isso."]
+advertising_patterns = ["unsubscribe", "promo", "marketing", "campaign", "upsell", "st_appsite_flagship", "home_glimmer", "logoGlimmer", "profile_glimmer"]
 
 # Domínios irrelevantes (exemplos de domínios comuns em propagandas)
 irrelevant_domains = ["mailchimp.com", "ad.doubleclick.net"]
 
-# Função para verificar se um link é irrelevante baseado na âncora
+# Função para verificar se um link é irrelevante baseado na âncora e URL
 def is_relevant_link(anchor_text, link_url):
     # Verificar se o texto âncora contém palavras irrelevantes
     for word in irrelevant_anchors:
@@ -46,6 +46,9 @@ for message in messages:
         if message.BodyFormat == 2:  # 2 = HTML format
             html_body = message.HTMLBody
             soup = BeautifulSoup(html_body, "html.parser")  # Usando BeautifulSoup para parsear o HTML
+            
+            # Usar um conjunto (set) para evitar duplicação de links no mesmo e-mail
+            unique_links = set()
 
             # Encontrar todos os links (<a> tags)
             for link_tag in soup.find_all('a', href=True):
@@ -53,7 +56,10 @@ for message in messages:
                 anchor_text = link_tag.get_text()  # Extrair o texto âncora
 
                 # Filtrar links irrelevantes e de propaganda
-                if is_relevant_link(anchor_text, link):
+                if is_relevant_link(anchor_text, link) and link not in unique_links:
+                    unique_links.add(link)  # Adicionar o link ao conjunto para evitar duplicações
+                    
+                    # Armazenar as informações do e-mail
                     subject = message.Subject
                     date = message.ReceivedTime.strftime("%Y-%m-%d")  # Data do e-mail
                     time = message.ReceivedTime.strftime("%H:%M:%S")  # Hora do e-mail
