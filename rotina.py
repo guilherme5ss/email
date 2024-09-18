@@ -7,14 +7,14 @@ caminho =(get_oulook_trees()[1]).find_path_values("Respostas")
 # Obter todos os e-mails na pasta
 messages = acessar_subpasta(caminho).Items
 
-# Lista para armazenar os dados dos links
-data_list = []
+# Dicionário para armazenar links e as mensagens correspondentes
+links_dict = defaultdict(list)
 
 # Expressão regular para encontrar URLs
 url_regex = re.compile(r'https?://\S+')
 
 # Palavras âncoras e domínios irrelevantes
-irrelevant_anchors = ["aqui", "clique", "cancelar", "unsubscribe", "sair", "ajuda", "saiba por que incluímos isso."]
+irrelevant_anchors = ["aqui", "clique", "cancelar", "unsubscribe", "sair", "ajuda", "saiba por que incluímos isso.", "conte como foi sua experiência"]
 advertising_patterns = ["unsubscribe", "promo", "marketing", "campaign", "upsell", "st_appsite_flagship", "home_glimmer", "logoGlimmer", "profile_glimmer"]
 
 # Domínios irrelevantes (exemplos de domínios comuns em propagandas)
@@ -64,15 +64,26 @@ for message in messages:
                     date = message.ReceivedTime.strftime("%Y-%m-%d")  # Data do e-mail
                     time = message.ReceivedTime.strftime("%H:%M:%S")  # Hora do e-mail
                     
-                    # Adicionar os dados à lista
-                    data_list.append([subject, link, date, time])
+                    # Adicionar o link ao dicionário com as informações do e-mail
+                    links_dict[link].append({"Assunto": subject, "Data": date, "Hora": time})
     except Exception as e:
         print(f"Erro ao processar o e-mail: {e}")
 
+# Preparando os dados para exportação
+data_list = []
+
+# Para cada link, listamos os detalhes e indicamos as repetições
+for link, emails in links_dict.items():
+    # Concatenar os detalhes de e-mails associados ao link
+    email_details = "; ".join([f"{email['Assunto']} ({email['Data']} {email['Hora']})" for email in emails])
+    
+    # Adicionar a entrada à lista
+    data_list.append([link, email_details, len(emails)])  # Inclui a contagem de repetições
+
 # Criando um DataFrame com os dados coletados
-df = pd.DataFrame(data_list, columns=["Assunto", "Link", "Data", "Hora"])
+df = pd.DataFrame(data_list, columns=["Link", "Emails Associados", "Repetições"])
 
 # Salvando o DataFrame em um arquivo Excel
-df.to_excel("links_filtrados_outlook.xlsx", index=False)
+df.to_excel("links_com_repeticoes_outlook.xlsx", index=False)
 
 print("Arquivo Excel criado com sucesso!")
