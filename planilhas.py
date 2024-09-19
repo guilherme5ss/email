@@ -101,13 +101,14 @@ for link, emails in links_dict.items():
     ])
 
 # Criando DataFrames com os dados coletados
-df_emails_lidos = pd.DataFrame(emails_lidos, columns=["Assunto", "Data", "Hora", "EntryID", "StoreID"])
 df_links = pd.DataFrame(links_data_list, columns=["Link", "Primeiro Email", "Primeira Data", "Ultimo Email", "Ultima Data", "Repetições"])
+df_emails_lidos = pd.DataFrame(emails_lidos, columns=["Assunto", "Data", "Hora", "EntryID", "StoreID"])
 
 saida = str(pasta)+"_links.xlsx"
 # Salvando os DataFrames em um arquivo Excel com duas abas
+# Criar sumarização para assuntos
 with pd.ExcelWriter(saida) as writer:
-    df_emails_lidos.to_excel(writer, sheet_name="Emails Lidos", index=False)
     df_links.to_excel(writer, sheet_name="Links", index=False)
+    df_emails_lidos.to_excel(writer, sheet_name="Emails Lidos", index=False)
 
 print("Arquivo Excel com abas 'Emails Lidos' e 'Links' criado com sucesso!")
