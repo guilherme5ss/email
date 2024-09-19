@@ -2,7 +2,7 @@ from emails import *
 
 outlook = win32com.client.Dispatch("Outlook.Application").GetNamespace("MAPI") # Inicializando a conexão com o Outlook
 
-pasta = "Glassdoor"
+pasta = "Respostas"
 caminho =(get_oulook_trees()[1]).find_path_values(pasta)
 
 # Obter todos os e-mails na pasta
@@ -10,7 +10,6 @@ messages = acessar_subpasta(caminho).Items
 
 # Dicionário para armazenar links e as mensagens correspondentes
 links_dict = defaultdict(list)
-reject_dict = defaultdict(list)
 
 # Lista para armazenar informações de todos os e-mails lidos
 emails_lidos = []
@@ -76,9 +75,6 @@ for message in messages:
                     
                     # Adicionar o link ao dicionário com as informações do e-mail
                     links_dict[link].append({"Assunto": subject, "Data": date, "Hora": time})
-                else:
-                    unique_links.add(link)  # Adicionar o link ao conjunto para evitar duplicações
-                    reject_dict[link].append({"Assunto": subject, "Data": date, "Hora": time})
     except Exception as e:
         print(f"Erro ao processar o e-mail: {e}")
 
@@ -110,7 +106,7 @@ df_links = pd.DataFrame(links_data_list, columns=["Link", "Primeiro Email", "Pri
 
 saida = str(pasta)+"_links.xlsx"
 # Salvando os DataFrames em um arquivo Excel com duas abas
-with pd.ExcelWriter(str(saida)) as writer:
+with pd.ExcelWriter(saida) as writer:
     df_emails_lidos.to_excel(writer, sheet_name="Emails Lidos", index=False)
     df_links.to_excel(writer, sheet_name="Links", index=False)
 
