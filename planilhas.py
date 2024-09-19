@@ -2,20 +2,25 @@ from emails import *
 
 outlook = win32com.client.Dispatch("Outlook.Application").GetNamespace("MAPI") # Inicializando a conexão com o Outlook
 
-caminho =(get_oulook_trees()[1]).find_path_values("Respostas")
+pasta = "Glassdoor"
+caminho =(get_oulook_trees()[1]).find_path_values(pasta)
 
 # Obter todos os e-mails na pasta
 messages = acessar_subpasta(caminho).Items
 
 # Dicionário para armazenar links e as mensagens correspondentes
 links_dict = defaultdict(list)
+reject_dict = defaultdict(list)
+
+# Lista para armazenar informações de todos os e-mails lidos
+emails_lidos = []
 
 # Expressão regular para encontrar URLs
 url_regex = re.compile(r'https?://\S+')
 
 # Palavras âncoras e domínios irrelevantes
 irrelevant_anchors = ["aqui", "clique", "cancelar", "unsubscribe", "sair", "ajuda", "saiba por que incluímos isso.", "conte como foi sua experiência"]
-advertising_patterns = ["unsubscribe", "promo", "marketing", "campaign", "upsell", "st_appsite_flagship", "home_glimmer", "logoGlimmer", "profile_glimmer"]
+advertising_patterns = ["unsubscribe", "promo", "marketing", "upsell", "st_appsite_flagship", "home_glimmer", "logoGlimmer", "profile_glimmer"]
 
 # Domínios irrelevantes (exemplos de domínios comuns em propagandas)
 irrelevant_domains = ["mailchimp.com", "ad.doubleclick.net"]
@@ -42,6 +47,16 @@ def is_relevant_link(anchor_text, link_url):
 # Percorrer todas as mensagens
 for message in messages:
     try:
+        # Coletar informações de cada e-mail
+        subject = message.Subject
+        date = message.ReceivedTime.strftime("%Y-%m-%d")  # Data do e-mail
+        time = message.ReceivedTime.strftime("%H:%M:%S")  # Hora do e-mail
+        entry_id = message.EntryID
+        store_id = message.Parent.StoreID
+
+        # Armazenar as informações do e-mail para a aba "Emails Lidos"
+        emails_lidos.append([subject, date, time, entry_id, store_id])
+
         # Verificar se o e-mail tem HTMLBody (alguns e-mails podem ser texto simples)
         if message.BodyFormat == 2:  # 2 = HTML format
             html_body = message.HTMLBody
@@ -59,31 +74,44 @@ for message in messages:
                 if is_relevant_link(anchor_text, link) and link not in unique_links:
                     unique_links.add(link)  # Adicionar o link ao conjunto para evitar duplicações
                     
-                    # Armazenar as informações do e-mail
-                    subject = message.Subject
-                    date = message.ReceivedTime.strftime("%Y-%m-%d")  # Data do e-mail
-                    time = message.ReceivedTime.strftime("%H:%M:%S")  # Hora do e-mail
-                    
                     # Adicionar o link ao dicionário com as informações do e-mail
                     links_dict[link].append({"Assunto": subject, "Data": date, "Hora": time})
+                else:
+                    unique_links.add(link)  # Adicionar o link ao conjunto para evitar duplicações
+                    reject_dict[link].append({"Assunto": subject, "Data": date, "Hora": time})
     except Exception as e:
         print(f"Erro ao processar o e-mail: {e}")
 
 # Preparando os dados para exportação
-data_list = []
+
+# Lista para armazenar os dados de links com repetições e os e-mails associados
+links_data_list = []
 
 # Para cada link, listamos os detalhes e indicamos as repetições
 for link, emails in links_dict.items():
-    # Concatenar os detalhes de e-mails associados ao link
-    email_details = "; ".join([f"{email['Assunto']} ({email['Data']} {email['Hora']})" for email in emails])
+    # Organizar a lista de e-mails pela data e hora para obter o primeiro e último
+    emails_sorted = sorted(emails, key=lambda x: (x['Data'], x['Hora']))
+
+    # Primeiro e último e-mail associados ao link
+    first_email = emails_sorted[0]
+    last_email = emails_sorted[-1]
     
-    # Adicionar a entrada à lista
-    data_list.append([link, email_details, len(emails)])  # Inclui a contagem de repetições
+    # Adicionar a entrada à lista de links
+    links_data_list.append([
+        link, 
+        first_email["Assunto"], first_email["Data"],  # Primeiro e-mail associado
+        last_email["Assunto"], last_email["Data"],  # Último e-mail associado (se houver mais de um)
+        len(emails)  # Número de repetições
+    ])
 
-# Criando um DataFrame com os dados coletados
-df = pd.DataFrame(data_list, columns=["Link", "Emails Associados", "Repetições"])
+# Criando DataFrames com os dados coletados
+df_emails_lidos = pd.DataFrame(emails_lidos, columns=["Assunto", "Data", "Hora", "EntryID", "StoreID"])
+df_links = pd.DataFrame(links_data_list, columns=["Link", "Primeiro Email", "Primeira Data", "Ultimo Email", "Ultima Data", "Repetições"])
 
-# Salvando o DataFrame em um arquivo Excel
-df.to_excel("links_com_repeticoes_outlook.xlsx", index=False)
+saida = str(pasta)+"_links.xlsx"
+# Salvando os DataFrames em um arquivo Excel com duas abas
+with pd.ExcelWriter(str(saida)) as writer:
+    df_emails_lidos.to_excel(writer, sheet_name="Emails Lidos", index=False)
+    df_links.to_excel(writer, sheet_name="Links", index=False)
 
-print("Arquivo Excel criado com sucesso!")
+print("Arquivo Excel com abas 'Emails Lidos' e 'Links' criado com sucesso!")
